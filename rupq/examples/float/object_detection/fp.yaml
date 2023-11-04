@@ -1,0 +1,45 @@
+# Dataset
+dataset: &dataset !COCODataloader
+  batch_size: 64
+  image_size: 608
+  multiscale: true
+
+# Optimizers
+optimizers: &optimizers
+  weight_optimizer:
+    name: SGD
+    model_params_type: all
+    params:
+      lr: 0.01
+      weight_decay: 5e-4
+      momentum: 0.9
+      nesterov: True
+    scheduler:
+      name: LambdaLR
+      params:
+        lr_lambda: !CosineDecay
+          initial_value: 1.0
+          final_value: 0.0
+          warmup_steps: 1000
+          warmup_mode: linear
+          decay_steps: 548900
+
+training_loop: &training_loop !ObjectDetectionTrainingLoop
+  dataset: *dataset
+  loss: !YOLOLoss
+  print_calibration: false
+
+task: !Task
+  training_loop: *training_loop
+  epochs: 300
+  model_arch: yolo_v3
+  optimizers: *optimizers
+  model_saver:
+    save_last: True
+  callbacks:
+    - !ValidateCOCOCallback
+      map: !MAP
+        img_size: 608
+        iou_thres: 0.5
+        conf_thres: 0.01 
+        nms_thres: 0.5

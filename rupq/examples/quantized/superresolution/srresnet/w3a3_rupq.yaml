@@ -1,0 +1,88 @@
+model_parser: &model_parser !ModelParser
+  wrappers:
+    Conv2d: !QuantConv2d
+      quantizer: !ModuleQuantizer
+        input_quantizer: !StepOffsetQuantizer
+          initializer: !MinErrorInitializer
+          transformation: !Standardization
+            momentum: 0.9999
+            std_init: 1.0
+        weight_quantizer: !StepQuantizer
+          initializer: !MinErrorInitializer 
+          transformation: !Standardization
+            dim: [1, 2, 3]
+          per_channel: true
+
+  input_bit_width:
+    default: 3
+    exceptions:
+      conv1.0: 8
+      conv3.0: 8
+  weight_bit_width:
+    default: 3
+    exceptions:
+      conv1.0: 8
+      conv3.0: 8
+  half_wave:
+    default: true
+    exceptions:
+      conv1.0: false
+
+# Dataset
+dataset: &dataset !DIV2KDataloader
+  batch_size: 32
+  patch_size: 128
+  scale: 4
+
+# Optimizers
+optimizers: &optimizers
+  weight_optimizer: 
+    name: Adam
+    model_params_type: weight
+    params:
+      lr: 0.001
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 180000
+  quant_w_optimizer: 
+    name: Adam
+    model_params_type: quant_weight
+    params:
+      lr: 0.000001
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 180000
+  quant_i_optimizer: 
+    name: Adam
+    model_params_type: quant_input
+    params:
+      lr: 0.001
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 180000
+
+training_loop: &training_loop !TrainingLoop
+  dataset: *dataset
+  loss: !L1Loss
+  train_metrics:
+    PSNR: !PSNR
+  val_metrics:
+    PSNR: !PSNR
+
+task: !Task
+  training_loop: *training_loop
+  epochs: 7200
+  model_parser: *model_parser
+  optimizers: *optimizers
+  model_saver:
+    monitor: "val_PSNR"
+    mode: max
+  check_val_every_n_epochs: 50
+  callbacks:
+    - !BenchmarkSuperresolutionCallback
+      scale: 4
+      psnr: !PSNR
+    - !QuantImagesCallback

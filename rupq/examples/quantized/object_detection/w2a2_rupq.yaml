@@ -1,0 +1,100 @@
+model_parser: &model_parser !ModelParser
+  wrappers:
+    Conv2d: !QuantConv2d
+      quantizer: !ModuleQuantizer
+        input_quantizer: !StepOffsetQuantizer
+          initializer: !MinErrorInitializer
+          transformation: !Standardization
+            momentum: 0.9999
+            trainable: false
+        weight_quantizer: !StepQuantizer
+          initializer: !MinErrorInitializer
+          transformation: !Standardization
+            trainable: true
+  input_bit_width:
+    default: 2
+    exceptions:
+      module_list.0.conv_0: 8
+  weight_bit_width:
+    default: 2
+    exceptions:
+      module_list.0.conv_0: 8
+  half_wave:
+    default: false
+    exceptions:
+      module_list.0.conv_0: true
+
+# Dataset
+dataset: &dataset !COCODataloader
+  batch_size: 64
+  image_size: 608
+  multiscale: true
+
+# Optimizers
+optimizers: &optimizers
+  weight_optimizer:
+    name: SGD
+    model_params_type: weight
+    params:
+      lr: 0.01
+      weight_decay: 5e-4
+      momentum: 0.9
+      nesterov: True
+    scheduler:
+      name: LambdaLR
+      params:
+        lr_lambda: !CosineDecay
+          initial_value: 1.0
+          final_value: 0.0
+          warmup_steps: 1000
+          warmup_mode: linear
+          decay_steps: 548900
+  quant_w_optimizer:
+    name: Adam
+    model_params_type: quant_weight
+    params:
+      lr: 0.00001
+    scheduler:
+      name: LambdaLR
+      params:
+        lr_lambda: !CosineDecay
+          initial_value: 1.0
+          final_value: 0.0
+          warmup_steps: 1000
+          warmup_mode: linear
+          decay_steps: 548900
+  quant_i_optimizer:
+    name: Adam
+    model_params_type: quant_input
+    params:
+      lr: 0.001
+    scheduler:
+      name: LambdaLR
+      params:
+        lr_lambda: !CosineDecay
+          initial_value: 1.0
+          final_value: 0.0
+          warmup_steps: 5000
+          warmup_mode: zero
+          decay_steps: 544900
+
+training_loop: &training_loop !ObjectDetectionTrainingLoop
+  dataset: *dataset
+  loss: !YOLOLoss
+
+task: !Task
+  training_loop: *training_loop
+  epochs: 300
+  model_parser: *model_parser
+  optimizers: *optimizers
+  check_val_every_n_epochs: 1000 # to not check val
+  model_saver:
+    save_last: true
+  callbacks:
+    - !ValidateCOCOCallback
+      map: !MAP
+        img_size: 608
+        iou_thres: 0.5
+        conf_thres: 0.01
+        nms_thres: 0.5
+    - !QuantImagesCallback

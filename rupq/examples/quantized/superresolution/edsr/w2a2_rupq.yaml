@@ -1,0 +1,116 @@
+model_parser: &model_parser !ModelParser
+  wrappers:
+    Conv2d: !QuantConv2d
+      quantizer: !ModuleQuantizer
+        input_quantizer: !StepOffsetQuantizer
+          initializer: !MeanStdInitializer
+        weight_quantizer: !StepQuantizer
+          initializer: !MeanStdInitializer
+          transformation: !Standardization
+            dim: [1, 2, 3]
+          per_channel: true
+
+  input_bit_width:
+    default: 2
+    exceptions:
+      head.0: 8
+      tail.1: 8
+  weight_bit_width:
+    default: 2
+    exceptions:
+      head.0: 8
+      tail.1: 8
+  half_wave:
+    default: true
+    exceptions:
+      head.0: false
+      body.0.conv_block.0: false
+      body.1.conv_block.0: false
+      body.2.conv_block.0: false
+      body.3.conv_block.0: false
+      body.4.conv_block.0: false
+      body.5.conv_block.0: false
+      body.6.conv_block.0: false
+      body.7.conv_block.0: false
+      body.8.conv_block.0: false
+      body.9.conv_block.0: false
+      body.10.conv_block.0: false
+      body.11.conv_block.0: false
+      body.12.conv_block.0: false
+      body.13.conv_block.0: false
+      body.14.conv_block.0: false
+      body.15.conv_block.0: false
+      body.16: false
+      tail.0.0: false
+      tail.1: false
+
+
+# Dataset
+dataset: &dataset !DIV2KDataloader
+  batch_size: 16
+  patch_size: 96
+  scale: &scale 2
+  normalize: &normalize False
+
+# Optimizers
+optimizers: &optimizers
+  optimizer:
+    name: Adam
+    model_params_type: weight
+    params:
+      lr: 0.0001 
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 300000
+  qant_w_optimizer:
+    name: Adam
+    model_params_type: quant_weight
+    params:
+      lr: 0.0001
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 300000
+  qant_i_optimizer:
+    name: Adam
+    model_params_type: quant_input
+    params:
+      lr: 0.0001
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 300000
+  
+training_loop: &training_loop !TrainingLoop
+  dataset: *dataset
+  loss: !L1Loss
+  train_metrics:
+    PSNR: !PSNR
+      min_val: 0
+      max_val: 255
+      boundary_size: *scale
+  val_metrics:
+    PSNR: !PSNR
+      min_val: 0
+      max_val: 255
+      boundary_size: *scale
+
+task: !Task
+  training_loop: *training_loop
+  epochs: 6000
+  model_parser: *model_parser
+  optimizers: *optimizers
+  model_saver:
+    monitor: "val_PSNR"
+    mode: max
+  check_val_every_n_epochs: 50
+  callbacks:
+    - !BenchmarkSuperresolutionCallback
+      scale: *scale
+      normalize: *normalize
+      psnr: !PSNR
+        min_val: 0
+        max_val: 255
+        boundary_size: *scale
+    - !QuantImagesCallback

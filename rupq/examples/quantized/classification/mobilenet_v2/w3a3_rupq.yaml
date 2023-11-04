@@ -1,0 +1,114 @@
+model_parser: &model_parser !ModelParser
+  wrappers:
+    Conv2d: !QuantConv2d
+      quantizer: !ModuleQuantizer
+        input_quantizer: !StepOffsetQuantizer
+          initializer: !MinErrorInitializer
+          transformation: !Standardization
+            momentum: 0.9999
+            std_init: 1.0
+        weight_quantizer: !StepQuantizer
+          initializer: !MinErrorInitializer
+          transformation: !Standardization
+            dim: [1, 2, 3]
+          per_channel: true
+
+    Linear: !QuantLinear
+      quantizer: !ModuleQuantizer
+        input_quantizer: !StepOffsetQuantizer
+          initializer: !MinErrorInitializer
+          transformation: !Standardization
+            momentum: 0.9999
+            std_init: 1.0
+        weight_quantizer: !StepQuantizer
+          initializer: !MinErrorInitializer
+          transformation: !Standardization
+            dim: [1]
+          per_channel: true
+
+  input_bit_width:
+    default: 3
+    exceptions:
+      features.0.0: 8
+  weight_bit_width:
+    default: 3
+    exceptions:
+      features.0.0: 8
+  half_wave:
+    default: true
+    exceptions:
+      features.0.0: false
+      features.2.conv.0.0: false
+      features.3.conv.0.0: false
+      features.4.conv.0.0: false
+      features.5.conv.0.0: false
+      features.6.conv.0.0: false
+      features.7.conv.0.0: false
+      features.8.conv.0.0: false
+      features.9.conv.0.0: false
+      features.10.conv.0.0: false
+      features.11.conv.0.0: false
+      features.12.conv.0.0: false
+      features.13.conv.0.0: false
+      features.14.conv.0.0: false
+      features.15.conv.0.0: false
+      features.16.conv.0.0: false
+      features.17.conv.0.0: false
+      features.18.0: false
+
+# Dataset
+dataset: &dataset !ImageNet2012Dataloader
+  batch_size: 256
+
+# Optimizers
+optimizers: &optimizers
+  weight_optimizer:
+    name: SGD
+    model_params_type: weight
+    params: 
+      lr: 0.01
+      weight_decay: 0.00004
+      momentum: 0.9
+      nesterov: false
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 450450 # 5005 * 90
+  quant_w_optimizer:
+    name: Adam
+    model_params_type: quant_weight
+    params:
+      lr: 0.0001
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 450450 # 5005 * 90
+  quant_i_optimizer:
+    name: Adam
+    model_params_type: quant_input
+    params:
+      lr: 0.001 
+    scheduler:
+      name: CosineAnnealingLR
+      params:
+        T_max: 450450 # 5005 * 90 
+
+training_loop: &training_loop !TrainingLoop
+  dataset: *dataset
+  loss: !CrossEntropyLoss
+  train_metrics:
+    accuracy: !Accuracy
+  val_metrics:
+    accuracy: !Accuracy
+
+task: !Task
+  training_loop: *training_loop
+  epochs: 90
+  model_parser: *model_parser
+  optimizers: *optimizers
+  model_saver:
+    monitor: "val_accuracy"
+    mode: max
+  callbacks:
+    - !BatchNormReestimationCallback
+    - !QuantImagesCallback

@@ -1,0 +1,52 @@
+# Dataset
+dataset: &dataset !DIV2KDataloader
+  batch_size: 16
+  patch_size: 96
+  scale: &scale 2
+  normalize: &normalize False
+
+# Optimizers
+optimizers: &optimizers
+  weight_optimizer:
+    name: Adam
+    model_params_type: all
+    params:
+      lr: 0.0001
+    scheduler:
+      name: MultiStepLR
+      params:
+        milestones: [200000]
+        gamma: 0.5
+
+training_loop: &training_loop !TrainingLoop
+  dataset: *dataset
+  loss: !L1Loss
+  train_metrics:
+    PSNR: !PSNR
+      min_val: 0
+      max_val: 255
+      boundary_size: *scale
+  val_metrics:
+    PSNR: !PSNR
+      min_val: 0
+      max_val: 255
+      boundary_size: *scale
+  print_calibration: false
+
+task: !Task
+  training_loop: *training_loop
+  epochs: 6000
+  model_arch: edsr
+  optimizers: *optimizers
+  model_saver:
+    monitor: "val_PSNR"
+    mode: max
+  check_val_every_n_epochs: 50
+  callbacks:
+    - !BenchmarkSuperresolutionCallback
+      scale: *scale
+      normalize: *normalize
+      psnr: !PSNR
+        min_val: 0
+        max_val: 255
+        boundary_size: *scale
