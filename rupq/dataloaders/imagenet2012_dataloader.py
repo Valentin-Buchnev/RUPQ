@@ -41,7 +41,7 @@ class ImageNet2012Dataloader:
             ]
         )
 
-        self.num_workers = num_workers if num_workers != -1 else os.cpu_count() 
+        self.num_workers = num_workers if num_workers != -1 else min(os.cpu_count(), 8) 
         self._train_loader = None
         self._val_loader = None
 
