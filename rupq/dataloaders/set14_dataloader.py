@@ -29,7 +29,7 @@ class Set14Dataloader:
             normalize_transform = transforms.Lambda(lambda x: x)
 
         self.transforms = normalize_transform
-        self.num_workers = num_workers if num_workers != -1 else os.cpu_count()
+        self.num_workers = num_workers if num_workers != -1 else min(os.cpu_count(), 8)
         self._dataloader = None
 
     @property
