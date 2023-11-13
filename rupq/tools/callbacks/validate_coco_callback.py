@@ -19,7 +19,6 @@ class ValidateCOCOCallback(pl.callbacks.Callback):
         """
         Args:
             map (MAP): class to measure mAP.
-            log_every_n_epochs (int, optional): The frequency (in epochs) of validating. Defaults to 5.
         """
         super().__init__(**kwargs)
 
