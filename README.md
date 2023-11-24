@@ -4,7 +4,17 @@ This is the official pytorch implementation of the paper "RUPQ: Improving low-bi
 
 ## Reference
 
-If you find our work useful, please cite: TBD
+If you find our work useful, please cite:
+```
+@inproceedings{Buchnev_2023_BMVC,
+author    = {Valentin Buchnev and Jiao He and Fengyu Sun and Ivan Koryakovskiy},
+title     = {RUPQ: Improving low-bit quantization by equalizing relative updates of quantization parameters},
+booktitle = {34th British Machine Vision Conference 2023, {BMVC} 2023, Aberdeen, UK, November 20-24, 2023},
+publisher = {BMVA},
+year      = {2023},
+url       = {https://papers.bmvc2023.org/0307.pdf}
+}
+```
 
 ## Quick Start
 
