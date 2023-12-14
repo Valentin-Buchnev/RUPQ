@@ -1,6 +1,6 @@
 ## RUPQ: Relative Update-Preserving Quantizer
 
-This is the official pytorch implementation of the paper "RUPQ: Improving low-bit quantization by equalizing relative updates of quantization parameters", British Machine Vision Conference, 2023. This repository contains the reproduction of the results presented in the paper for image classification (ResNet-18 and MobileNet-v2), super-resolution (SRResNet and EDSR) and object detection (YOLO-v3). 
+This is the official pytorch implementation of the paper "RUPQ: Improving low-bit quantization by equalizing relative updates of quantization parameters" ([link](https://proceedings.bmvc2023.org/307/)), British Machine Vision Conference, 2023. This repository contains the reproduction of the results presented in the paper for image classification (ResNet-18 and MobileNet-v2), super-resolution (SRResNet and EDSR) and object detection (YOLO-v3). 
 
 ## Reference
 
